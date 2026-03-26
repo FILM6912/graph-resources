@@ -1,0 +1,15 @@
+node_modules/
+.vscode-test/
+*.vsix
+
+# Dependencies
+package-lock.json
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# IDE
+.idea/
+*.swp
+*.swo
