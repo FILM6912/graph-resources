@@ -3,6 +3,15 @@ const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
 
+function getNonce() {
+    let text = '';
+    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    for (let i = 0; i < 32; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
+}
+
 function activate(context) {
     const provider = new GPUUsageViewProvider(context.extensionUri);
 
@@ -66,128 +75,45 @@ class GPUUsageViewProvider {
     }
 
     _getHtmlForWebview(webview) {
-        const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'script.js'));
-        const cssUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'styles.css'));
+        const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'dist', 'index.js'));
+        const cssUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'dist', 'index.css'));
 
-        return `
-<!DOCTYPE html>
+        const nonce = getNonce();
+
+        return `<!DOCTYPE html>
 <html lang="th">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
     <title>System Monitor</title>
     <link rel="stylesheet" href="${cssUri}">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 </head>
-
 <body>
-    <div class="header">
-        <button class="container-menu" onclick="openPopup()">Menu</button>
-    </div>
-
-    <div class="container" id="chartContainer">
-        <div class="chart-container">
-            <canvas id="cpuRamChart"></canvas>
-        </div>
-        <div class="chart-container">
-            <canvas id="showTotalGpuVramGraph"></canvas>
-        </div>
-        <div class="chart-container">
-            <canvas id="gpuTotalChart"></canvas>
-        </div>
-    </div>
-
-    <div class="overlay" id="overlay"></div>
-
-    <div id="popupMenu" class="popup">
-        <button class="popup-close" onclick="closePopup()">x</button>
-        <div class="menu-title">Menu</div>
-
-        <div id="drives-container" class="storage-section">
-            <div class="storage-title">Storage Usage</div>
-        </div>
-
-        <div class="menu-list">
-            <div class="menu-section">
-            <!--
-                <div class="menu-item">
-                    <input type="checkbox" id="showCPUTemp">
-                    <label for="showCpu">Show CPU Temperature</label>
-                </div>
-            -->
-                <div class="menu-item">
-                    <input type="checkbox" id="showTemp">
-                    <label for="showCpu">Show GPU Temperature</label>
-                </div>
-                <div class="menu-item">
-                    <input type="checkbox" id="showCpu">
-                    <label for="showCpu">Show CPU usage</label>
-                </div>
-                <div class="menu-item">
-                    <input type="checkbox" id="showSystemVram">
-                    <label for="showSystemVram">Show device RAM usage</label>
-                </div>
-                <div class="menu-item">
-                    <input type="checkbox" id="showGpus">
-                    <label for="showGpus">Shows GPUs usage</label>
-                </div>
-                <div class="menu-item">
-                    <input type="checkbox" id="showGpuVram">
-                    <label for="showGpuVram">Shows VRAM GPUs usage</label>
-                </div>
-                <div class="menu-item">
-                    <input type="checkbox" id="showCpuRamGraph">
-                    <label for="showCpuRamGraph">Shows CPU and RAM graphs.</label>
-                </div>
-                <div class="menu-item">
-                    <input type="checkbox" id="showGpuVramGraph">
-                    <label for="showGpuVramGraph">Shows
-                        <input type="number" id="gpuNValue" min=0 max=10000 value=0>
-                        graphs of GPUs and VRAMs.
-                    </label>
-                </div>
-                <div class="menu-item">
-                    <input type="checkbox" id="showTotalGpu">
-                    <label for="showTotalGpu">Shows graph of total GPUs and VRAMs.</label>
-                </div>
-                <div class="menu-item">
-                    <label>
-                        Graph height
-                        <input type="number" id="chartHight" min="1" max="1000" value="200">
-                    </label>
-                </div>
-                <div class="menu-item">
-                    <label>
-                        time
-                        <input type="number" id="time" min="1" max="90" value="30"> s
-                    </label>
-                </div>
-
-            </div>
-        </div>
-
-    </div>
-
-    <script src="${scriptUri}"></script>
-
+    <div id="root"></div>
+    <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
 </body>
-
-</html>
-
-`;
+</html>`;
     }
     _getGPUUsage() {
         const platform = process.platform;
-        let nvidiaCommand, cpuCommand, ramCommand, driveCommand, netCommand;
-        // nvidiaCommand = "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader,nounits && \
-            // nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader,nounits"
-        nvidiaCommand = 'nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader,nounits';
+        let gpuCommand, cpuCommand;
+        gpuCommand = 'nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader,nounits';
         
         if (platform === 'win32') {
-            cpuCommand = `powershell -Command "$cpu=Get-CimInstance Win32_Processor; $os=Get-CimInstance Win32_OperatingSystem; $drives=Get-CimInstance Win32_LogicalDisk; $usedMem=[int]$os.TotalVisibleMemorySize - [int]$os.FreePhysicalMemory; Write-Output \\"cpu,$($cpu.Name) ,$($cpu.LoadPercentage)\\"; Write-Output \\"ram,$usedMem ,$($os.TotalVisibleMemorySize)\\"; $drives | ForEach-Object { Write-Output \\"drive,$($_.DeviceID) ,$($_.FreeSpace) ,$($_.Size)\\" }"`;
+            gpuCommand = `powershell -NoProfile -Command "$gpus = Get-CimInstance Win32_VideoController | Where-Object { $_.Name -and $_.AdapterRAM -gt 0 }; foreach ($g in $gpus) { $memTotalGb = [math]::Round(([double]$g.AdapterRAM / 1GB), 2); if ($memTotalGb -lt 0) { $memTotalGb = 0 }; Write-Output \\"gpu,$($g.Name),0,0,$memTotalGb,0\\" }"`;
+            cpuCommand = `powershell -Command "$cpu=Get-CimInstance Win32_Processor; $os=Get-CimInstance Win32_OperatingSystem; $drives=Get-CimInstance Win32_LogicalDisk; $usedMem=[int]$os.TotalVisibleMemorySize - [int]$os.FreePhysicalMemory; Write-Output \\"cpu,$($cpu.Name),$($cpu.LoadPercentage)\\"; Write-Output \\"ram,$usedMem,$($os.TotalVisibleMemorySize)\\"; $drives | ForEach-Object { Write-Output \\"drive,$($_.DeviceID),$($_.FreeSpace),$($_.Size)\\" }"`;
 
         } else if (platform === 'linux') {
+            gpuCommand = `bash -lc '
+if command -v nvidia-smi >/dev/null 2>&1; then
+  nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader,nounits
+elif command -v lspci >/dev/null 2>&1; then
+  lspci | awk -F\": \" "/VGA compatible controller|3D controller|Display controller/ {printf \\"gpu,%s,0,0,0,0\\\\n\\", $2}"
+else
+  echo "gpu,N/A,0,0,0,0"
+fi
+'`;
             cpuCommand = `
 echo -n "cpu,"; lscpu | awk -F: '/Model name/ {gsub(/^ +| +$/, "", $2); printf "%s ,", $2}'; 
 top -bn1 | grep "Cpu(s)" | awk '{print int($2)}'; 
@@ -200,25 +126,48 @@ df -k --output=target,used,size | tail -n +2 | awk '{printf "drive,%s ,%d ,%d\\n
             return;
         }
 
-        exec(nvidiaCommand, (error, stdout, stderr) => {
+        exec(gpuCommand, (error, stdout, stderr) => {
             if (error) {
-                // console.error(`Error executing nvidia-smi: ${stderr}`);
+                // console.error(`Error executing GPU command: ${stderr}`);
             } else {
                 const lines = stdout.trim().split('\n');
                 if (lines.length > 0) {
-                    this.currentData.gpu = []
+                    this.currentData.gpu = [];
                     for (let i = 0; i < lines.length; i++) {
-                        // print(lines[i].split(', '));
-                        const [device, usage, memoryUsed, memoryTotal, temperature] = lines[i].replace("\r", "").split(', ');
+                        const cleanedLine = lines[i].replace("\r", "");
+                        if (!cleanedLine) {
+                            continue;
+                        }
+                        let [device, usage, memoryUsed, memoryTotal, temperature] = cleanedLine.split(',').map(v => v.trim());
+                        if (device === "gpu") {
+                            [ , device, usage, memoryUsed, memoryTotal, temperature] = cleanedLine.split(',').map(v => v.trim());
+                            this.currentData.gpu.push({
+                                device: device || "N/A",
+                                gpuUsage: `${parseFloat(usage || "0").toFixed(2)}`,
+                                memoryUsage: `${parseFloat(memoryUsed || "0").toFixed(2)}`,
+                                memoryTotal: `${parseFloat(memoryTotal || "0").toFixed(2)}`,
+                                temperature: `${parseFloat(temperature || "0").toFixed(0)}`
+                            });
+                            continue;
+                        }
                         this.currentData.gpu.push({
-                            device: device,
-                            gpuUsage: `${usage}`,
-                            memoryUsage: `${(memoryUsed / 1024).toFixed(2)}`,
-                            memoryTotal: `${(memoryTotal / 1024).toFixed(2)}`,
-                            temperature: `${temperature}`
-                        })
+                            device: device || "N/A",
+                            gpuUsage: `${parseFloat(usage || "0").toFixed(2)}`,
+                            memoryUsage: `${(parseFloat(memoryUsed || "0") / 1024).toFixed(2)}`,
+                            memoryTotal: `${(parseFloat(memoryTotal || "0") / 1024).toFixed(2)}`,
+                            temperature: `${parseFloat(temperature || "0").toFixed(0)}`
+                        });
                     }
                 }
+            }
+            if (!this.currentData.gpu || this.currentData.gpu.length === 0) {
+                this.currentData.gpu = [{
+                    device: 'N/A',
+                    gpuUsage: '0',
+                    memoryUsage: '0',
+                    memoryTotal: '0',
+                    temperature: '0'
+                }];
             }
 
         });
@@ -234,31 +183,19 @@ df -k --output=target,used,size | tail -n +2 | awk '{printf "drive,%s ,%d ,%d\\n
                 this.currentData.drive = []
 
                 for (let i = 0; i < lines.length; i++) {
-
-                    switch (i) {
-                        case 0:
-                            const [id_cpu, cpu_name, cpu_usage] = lines[i].replaceAll("\r", "").split(',');
-                            if (id_cpu === "cpu") {
-                                this.currentData.cpu.cpuName = cpu_name
-                                this.currentData.cpu.cpuUsage = cpu_usage
-                            }
-
-                        case 1:
-                            const [id_ram, ram_used, ram_total] = lines[i].replaceAll("\r", "").split(',');
-                            if (id_ram === "ram") {
-                                this.currentData.cpu.memoryUsage = `${(ram_used / (1024 * 1024)).toFixed(2)}`
-                                this.currentData.cpu.memoryTotal = `${(ram_total / (1024 * 1024)).toFixed(2)}`
-                            }
-
-                        default:
-                            const [id_drive, drive_name, drive_used, drive_total] = lines[i].replaceAll("\r", "").split(',');
-                            if (id_drive === "drive") {
-                                this.currentData.drive.push({
-                                    drive_name: drive_name,
-                                    total_Size: `${(drive_total / (1024 * 1024 * 1024)).toFixed(2)}`,
-                                    use_Size: `${(drive_used / (1024 * 1024 * 1024)).toFixed(2)}`,
-                                })
-                            }
+                    const [id, value1, value2, value3] = lines[i].replaceAll("\r", "").split(',').map(v => v.trim());
+                    if (id === "cpu") {
+                        this.currentData.cpu.cpuName = value1;
+                        this.currentData.cpu.cpuUsage = value2;
+                    } else if (id === "ram") {
+                        this.currentData.cpu.memoryUsage = `${(value1 / (1024 * 1024)).toFixed(2)}`;
+                        this.currentData.cpu.memoryTotal = `${(value2 / (1024 * 1024)).toFixed(2)}`;
+                    } else if (id === "drive") {
+                        this.currentData.drive.push({
+                            drive_name: value1,
+                            total_Size: `${(value3 / (1024 * 1024 * 1024)).toFixed(2)}`,
+                            use_Size: `${(value2 / (1024 * 1024 * 1024)).toFixed(2)}`,
+                        });
                     }
                 }
             }

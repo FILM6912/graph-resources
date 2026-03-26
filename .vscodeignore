@@ -1,6 +1,7 @@
 .vscode/**
 .vscode-test/**
 test/**
+webview-ui/**
 .gitignore
 .yarnrc
 vsc-extension-quickstart.md
@@ -8,3 +9,6 @@ vsc-extension-quickstart.md
 **/*.map
 **/eslint.config.mjs
 **/.vscode-test.*
+media/script.js
+media/styles.css
+media/main.js
