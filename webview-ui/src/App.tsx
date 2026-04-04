@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { useSettings } from './hooks/useSettings';
 import { Header } from './components/Header';
@@ -11,6 +11,10 @@ import { SystemData, ChartDataPoint, GpuTotalDataPoint, GpuIndividualDataPoint }
 export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { settings, updateSettings } = useSettings();
+
+  useEffect(() => {
+    document.body.classList.toggle('light', settings.theme === 'light');
+  }, [settings.theme]);
 
   const [systemData, setSystemData] = useState<SystemData>({
     gpu: [{ device: 'N/A', gpuUsage: '0', memoryUsage: '0', memoryTotal: '0', temperature: '0' }],
@@ -118,38 +122,22 @@ export default function App() {
   useVSCodeApi(handleData);
 
   const effectiveGpuN = Math.min(settings.gpuNValue, systemData.gpu.length);
-  const formatPercent = (value: number, digits = 1) => `${value.toFixed(digits)}%`;
 
   return (
     <>
       <Header onOpenSettings={() => setIsSettingsOpen(true)} />
 
-      <div className="status-row">
-        <div className="status-card">
-          <span className="status-card-label">CPU</span>
-          <span className="status-card-value cpu">{formatPercent(lastValues.cpu, 0)}</span>
-          <span className="status-card-sub">{systemData.cpu.cpuName}</span>
-        </div>
-        <div className="status-card">
-          <span className="status-card-label">RAM</span>
-          <span className="status-card-value ram">{formatPercent(lastValues.ram, 1)}</span>
-          <span className="status-card-sub">{lastValues.ramUsed}/{lastValues.ramTotal} GB</span>
-        </div>
-        <div className="status-card">
-          <span className="status-card-label">GPU</span>
-          <span className="status-card-value gpu">{formatPercent(lastValues.gpu, 0)}</span>
-          <span className="status-card-sub">VRAM {lastValues.vramUsed}/{lastValues.vramTotal} GB</span>
-        </div>
-        <div className="status-card">
-          <span className="status-card-label">Temp</span>
-          <span className="status-card-value temp">{lastValues.temp.toFixed(0)}&deg;C</span>
-          <span className="status-card-sub">GPU Avg</span>
-        </div>
-      </div>
-
-      <div className="charts-scroll">
+      <div className={`charts-scroll${settings.chartHeightMode === 'auto' ? ' charts-auto' : ''}`}>
         {settings.showCpuRamGraph && (
-          <CpuRamChart data={cpuRamDataRef.current} settings={settings} />
+          <CpuRamChart
+            data={cpuRamDataRef.current}
+            settings={settings}
+            cpuName={systemData.cpu.cpuName}
+            cpuPercent={lastValues.cpu}
+            ramPercent={lastValues.ram}
+            ramUsed={lastValues.ramUsed}
+            ramTotal={lastValues.ramTotal}
+          />
         )}
 
         {settings.showTotalGpu && (
@@ -157,6 +145,10 @@ export default function App() {
             data={gpuTotalDataRef.current}
             settings={settings}
             gpuCount={systemData.gpu.length}
+            gpuAvgPercent={lastValues.gpu}
+            vramUsed={lastValues.vramUsed}
+            vramTotal={lastValues.vramTotal}
+            tempAvg={lastValues.temp}
           />
         )}
 

@@ -1,13 +1,7 @@
 import { useMemo } from 'react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import Plot from 'react-plotly.js';
+import { getChartHoverLabel } from '../chartHoverLabel';
+import { getChartAxisColors, getGpuSeries, getXAxisHoverSpike } from '../chartTheme';
 import { GpuIndividualDataPoint, Settings, GPUData } from '../types';
 
 interface GpuIndividualChartProps {
@@ -17,116 +11,144 @@ interface GpuIndividualChartProps {
   settings: Settings;
 }
 
-const GPU_COLORS = {
-  usage: '#d29922',
-  vram: '#3fb950',
-  temp: '#f85149',
-};
-
 export const GpuIndividualChart = ({
   gpuIndex,
   gpuData,
   data,
   settings,
 }: GpuIndividualChartProps) => {
-  const processedData = useMemo(() => {
-    return data.map((point, index) => ({
-      ...point,
-      timeLabel: `${index}s`,
-    }));
-  }, [data]);
+  const usagePct = parseFloat(gpuData.gpuUsage) || 0;
+  const tempC = parseFloat(gpuData.temperature) || 0;
+  const pct = (n: number, digits: number) => `${n.toFixed(digits)}%`;
+
+  const x = useMemo(() => data.map((_, i) => i), [data]);
+  const usageY = useMemo(() => data.map(d => d.gpuUsage), [data]);
+  const vramY = useMemo(() => data.map(d => d.vram), [data]);
+  const tempY = useMemo(() => data.map(d => d.temp), [data]);
+  const series = useMemo(() => getGpuSeries(settings.theme), [settings.theme]);
+  const axis = useMemo(() => getChartAxisColors(settings.theme), [settings.theme]);
+  const xSpike = useMemo(() => getXAxisHoverSpike(settings.theme), [settings.theme]);
+
+  const traces = useMemo(() => {
+    const t: Plotly.Data[] = [];
+    if (settings.showGpus) {
+      t.push({
+        x: x,
+        y: usageY,
+        name: 'Usage',
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: series.usage.line, width: 1.5, shape: 'spline' },
+        fill: 'tozeroy',
+        fillcolor: series.usage.fill,
+      });
+    }
+    if (settings.showGpuVram) {
+      t.push({
+        x: x,
+        y: vramY,
+        name: 'VRAM',
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: series.vram.line, width: 1.5, shape: 'spline' },
+        fill: 'tozeroy',
+        fillcolor: series.vram.fill,
+      });
+    }
+    if (settings.showTemp) {
+      t.push({
+        x: x,
+        y: tempY,
+        name: 'Temp',
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: series.temp.line, width: 1.5, shape: 'spline' },
+        fill: 'tozeroy',
+        fillcolor: series.temp.fill,
+      });
+    }
+    return t;
+  }, [
+    settings.showGpus,
+    settings.showGpuVram,
+    settings.showTemp,
+    x,
+    usageY,
+    vramY,
+    tempY,
+    series,
+  ]);
+
+  const layout = useMemo(
+    () => ({
+      margin: { t: 2, r: 2, b: 24, l: 28 },
+      xaxis: {
+        showgrid: false,
+        zeroline: false,
+        tickfont: { size: 9, color: axis.tick },
+        showline: true,
+        linecolor: axis.line,
+        linewidth: 1,
+        ...xSpike,
+      },
+      yaxis: {
+        range: [0, 100] as [number, number],
+        showgrid: true,
+        gridcolor: axis.grid,
+        griddash: 'dot' as const,
+        zeroline: false,
+        tickfont: { size: 9, color: axis.tick },
+        showline: true,
+        linecolor: axis.line,
+        linewidth: 1,
+      },
+      showlegend: false,
+      plot_bgcolor: 'transparent',
+      paper_bgcolor: 'transparent',
+      dragmode: false as const,
+      hovermode: 'x unified' as const,
+      hoverlabel: getChartHoverLabel(settings.theme),
+      autosize: true,
+    }),
+    [axis, xSpike, settings.theme],
+  );
 
   return (
-    <div className="chart-container" style={{ height: settings.chartHeightMode === 'auto' ? 'clamp(150px, 28vh, 280px)' : `${settings.chartHight}px` }}>
-      <div className="chart-title">
-        GPU {gpuIndex}: {gpuData.device}
+    <div className="chart-container" style={settings.chartHeightMode === 'auto' ? undefined : { height: `${settings.chartHight}px` }}>
+      <div className="chart-individual-head">
+        <div className="chart-stat-device" title={`GPU ${gpuIndex}: ${gpuData.device}`}>
+          GPU {gpuIndex}: {gpuData.device}
+        </div>
+        <div className="chart-head-stats">
+          <div className="chart-stat-col">
+            <span className="status-card-label">Usage</span>
+            <span className="status-card-value gpu">{pct(usagePct, 0)}</span>
+          </div>
+          <div className="chart-stat-col">
+            <span className="status-card-label">VRAM</span>
+            <span className="status-card-value vram-metric">
+              {gpuData.memoryUsage}/{gpuData.memoryTotal} GB
+            </span>
+          </div>
+          <div className="chart-stat-col">
+            <span className="status-card-label">Temp</span>
+            <span className="status-card-value temp">{tempC.toFixed(0)}°C</span>
+          </div>
+        </div>
       </div>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={processedData} margin={{ top: 2, right: 2, left: -20, bottom: 0 }}>
-          <defs>
-            <linearGradient id={`igpuGrad${gpuIndex}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={GPU_COLORS.usage} stopOpacity={0.3} />
-              <stop offset="100%" stopColor={GPU_COLORS.usage} stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id={`ivramGrad${gpuIndex}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={GPU_COLORS.vram} stopOpacity={0.3} />
-              <stop offset="100%" stopColor={GPU_COLORS.vram} stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id={`itempGrad${gpuIndex}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={GPU_COLORS.temp} stopOpacity={0.3} />
-              <stop offset="100%" stopColor={GPU_COLORS.temp} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#21262d" vertical={false} />
-          <XAxis
-            dataKey="timeLabel"
-            tick={{ fill: '#484f58', fontSize: 9 }}
-            axisLine={false}
-            tickLine={false}
-            interval="preserveStartEnd"
-          />
-          <YAxis
-            domain={[0, 100]}
-            tick={{ fill: '#484f58', fontSize: 9 }}
-            axisLine={false}
-            tickLine={false}
-            width={28}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: '#161b22',
-              border: '1px solid #30363d',
-              borderRadius: '6px',
-              color: '#e6edf3',
-              fontSize: '11px',
-              padding: '6px 10px',
-            }}
-            labelStyle={{ color: '#8b949e', marginBottom: '2px' }}
-            formatter={(value: number, name: string) => [
-              name === 'Temp' ? `${value.toFixed(0)}°C` : `${value.toFixed(1)}%`,
-              name,
-            ]}
-          />
-          {settings.showGpus && (
-            <Area
-              type="monotone"
-              dataKey="gpuUsage"
-              stroke={GPU_COLORS.usage}
-              strokeWidth={1.5}
-              fill={`url(#igpuGrad${gpuIndex})`}
-              dot={false}
-              name="Usage"
-              isAnimationActive={false}
-            />
-          )}
-          {settings.showGpuVram && (
-            <Area
-              type="monotone"
-              dataKey="vram"
-              stroke={GPU_COLORS.vram}
-              strokeWidth={1.5}
-              fill={`url(#ivramGrad${gpuIndex})`}
-              dot={false}
-              name="VRAM"
-              isAnimationActive={false}
-            />
-          )}
-          {settings.showTemp && (
-            <Area
-              type="monotone"
-              dataKey="temp"
-              stroke={GPU_COLORS.temp}
-              strokeWidth={1.5}
-              fill={`url(#itempGrad${gpuIndex})`}
-              dot={false}
-              name="Temp"
-              isAnimationActive={false}
-            />
-          )}
-        </AreaChart>
-      </ResponsiveContainer>
+      <div className="chart-plot-wrap">
+        <Plot
+          data={traces}
+          layout={layout}
+          config={{
+            displayModeBar: false,
+            responsive: true,
+            scrollZoom: false,
+          }}
+          style={{ width: '100%', height: '100%' }}
+          useResizeHandler
+        />
+      </div>
     </div>
   );
 };
-
-

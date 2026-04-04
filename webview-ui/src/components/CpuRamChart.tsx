@@ -1,98 +1,131 @@
 import { useMemo } from 'react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import Plot from 'react-plotly.js';
+import { getChartHoverLabel } from '../chartHoverLabel';
+import { getChartAxisColors, getCpuRamSeries, getXAxisHoverSpike } from '../chartTheme';
 import { ChartDataPoint, Settings } from '../types';
 
 interface CpuRamChartProps {
   data: ChartDataPoint[];
   settings: Settings;
+  cpuName: string;
+  cpuPercent: number;
+  ramPercent: number;
+  ramUsed: string;
+  ramTotal: string;
 }
 
-export const CpuRamChart = ({ data, settings }: CpuRamChartProps) => {
-  const processedData = useMemo(() => {
-    return data.map((point, index) => ({
-      ...point,
-      timeLabel: `${index}s`,
-    }));
-  }, [data]);
+export const CpuRamChart = ({
+  data,
+  settings,
+  cpuName,
+  cpuPercent,
+  ramPercent,
+  ramUsed,
+  ramTotal,
+}: CpuRamChartProps) => {
+  const x = useMemo(() => data.map((_, i) => i), [data]);
+  const cpuY = useMemo(() => data.map(d => d.cpu), [data]);
+  const ramY = useMemo(() => data.map(d => d.ram), [data]);
+  const series = useMemo(() => getCpuRamSeries(settings.theme), [settings.theme]);
+  const axis = useMemo(() => getChartAxisColors(settings.theme), [settings.theme]);
+  const xSpike = useMemo(() => getXAxisHoverSpike(settings.theme), [settings.theme]);
+
+  const traces = useMemo(() => {
+    const t: Plotly.Data[] = [];
+    if (settings.showCpu) {
+      t.push({
+        x: x,
+        y: cpuY,
+        name: 'CPU',
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: series.cpu.line, width: 1.5, shape: 'spline' },
+        fill: 'tozeroy',
+        fillcolor: series.cpu.fill,
+      });
+    }
+    if (settings.showSystemVram) {
+      t.push({
+        x: x,
+        y: ramY,
+        name: 'RAM',
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: series.ram.line, width: 1.5, shape: 'spline' },
+        fill: 'tozeroy',
+        fillcolor: series.ram.fill,
+      });
+    }
+    return t;
+  }, [settings.showCpu, settings.showSystemVram, x, cpuY, ramY, series]);
+
+  const layout = useMemo(
+    () => ({
+      margin: { t: 2, r: 2, b: 24, l: 28 },
+      xaxis: {
+        showgrid: false,
+        zeroline: false,
+        tickfont: { size: 9, color: axis.tick },
+        showline: true,
+        linecolor: axis.line,
+        linewidth: 1,
+        ...xSpike,
+      },
+      yaxis: {
+        range: [0, 100] as [number, number],
+        showgrid: true,
+        gridcolor: axis.grid,
+        griddash: 'dot' as const,
+        zeroline: false,
+        tickfont: { size: 9, color: axis.tick },
+        showline: true,
+        linecolor: axis.line,
+        linewidth: 1,
+      },
+      showlegend: false,
+      plot_bgcolor: 'transparent',
+      paper_bgcolor: 'transparent',
+      dragmode: false as const,
+      hovermode: 'x unified' as const,
+      hoverlabel: getChartHoverLabel(settings.theme),
+      autosize: true,
+    }),
+    [axis, xSpike, settings.theme],
+  );
+
+  const pct = (n: number, digits: number) => `${n.toFixed(digits)}%`;
 
   return (
-    <div className="chart-container" style={{ height: settings.chartHeightMode === 'auto' ? 'clamp(150px, 28vh, 280px)' : `${settings.chartHight}px` }}>
-      <div className="chart-title">CPU & RAM</div>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={processedData} margin={{ top: 2, right: 2, left: -20, bottom: 0 }}>
-          <defs>
-            <linearGradient id="cpuGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#58a6ff" stopOpacity={0.3} />
-              <stop offset="100%" stopColor="#58a6ff" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="ramGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#d2a8ff" stopOpacity={0.3} />
-              <stop offset="100%" stopColor="#d2a8ff" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#21262d" vertical={false} />
-          <XAxis
-            dataKey="timeLabel"
-            tick={{ fill: '#484f58', fontSize: 9 }}
-            axisLine={false}
-            tickLine={false}
-            interval="preserveStartEnd"
-          />
-          <YAxis
-            domain={[0, 100]}
-            tick={{ fill: '#484f58', fontSize: 9 }}
-            axisLine={false}
-            tickLine={false}
-            width={28}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: '#161b22',
-              border: '1px solid #30363d',
-              borderRadius: '6px',
-              color: '#e6edf3',
-              fontSize: '11px',
-              padding: '6px 10px',
-            }}
-            labelStyle={{ color: '#8b949e', marginBottom: '2px' }}
-            formatter={(value: number, name: string) => [`${value.toFixed(1)}%`, name]}
-          />
-          {settings.showCpu && (
-            <Area
-              type="monotone"
-              dataKey="cpu"
-              stroke="#58a6ff"
-              strokeWidth={1.5}
-              fill="url(#cpuGrad)"
-              dot={false}
-              name="CPU"
-              isAnimationActive={false}
-            />
-          )}
-          {settings.showSystemVram && (
-            <Area
-              type="monotone"
-              dataKey="ram"
-              stroke="#d2a8ff"
-              strokeWidth={1.5}
-              fill="url(#ramGrad)"
-              dot={false}
-              name="RAM"
-              isAnimationActive={false}
-            />
-          )}
-        </AreaChart>
-      </ResponsiveContainer>
+    <div className="chart-container" style={settings.chartHeightMode === 'auto' ? undefined : { height: `${settings.chartHight}px` }}>
+      <div className="chart-head-stats">
+        <div className="chart-stat-col">
+          <span className="status-card-label">CPU</span>
+          <span className="status-card-value cpu">{pct(cpuPercent, 0)}</span>
+          <span className="status-card-sub" title={cpuName}>
+            {cpuName}
+          </span>
+        </div>
+        <div className="chart-stat-col">
+          <span className="status-card-label">RAM</span>
+          <span className="status-card-value ram">{pct(ramPercent, 1)}</span>
+          <span className="status-card-sub">
+            {ramUsed}/{ramTotal} GB
+          </span>
+        </div>
+      </div>
+      <div className="chart-plot-wrap">
+        <Plot
+          data={traces}
+          layout={layout}
+          config={{
+            displayModeBar: false,
+            responsive: true,
+            scrollZoom: false,
+          }}
+          style={{ width: '100%', height: '100%' }}
+          useResizeHandler
+        />
+      </div>
     </div>
   );
 };
-
-

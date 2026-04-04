@@ -25,6 +25,85 @@
     --radius-lg: 12px;
     --transition: all 0.2s ease;
     --font-mono: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+    --chart-title-bg: rgba(13, 17, 23, 0.7);
+    --danger-bg-soft: rgba(248, 81, 73, 0.12);
+}
+
+/* Light: cool gray canvas, white panels, clearer hierarchy */
+body.light {
+    --bg-primary: #e8ecf1;
+    --bg-secondary: #f0f3f7;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f6f8fa;
+    --bg-popup: #ffffff;
+    --bg-input: #f6f8fa;
+    --text-primary: #1c2128;
+    --text-secondary: #57606a;
+    --text-muted: #6e7781;
+    --accent: #0969da;
+    --accent-hover: #0550ae;
+    --accent-glow: rgba(9, 105, 218, 0.14);
+    --success: #1a7f37;
+    --warning: #9a6700;
+    --danger: #a40e26;
+    --info: #0969da;
+    --border: #d8dee4;
+    --border-hover: #afb8c1;
+    --shadow-sm: 0 1px 2px rgba(28, 33, 40, 0.06);
+    --shadow-md: 0 4px 14px rgba(28, 33, 40, 0.08);
+    --shadow-lg: 0 16px 48px rgba(28, 33, 40, 0.12);
+    --chart-title-bg: rgba(255, 255, 255, 0.92);
+    --danger-bg-soft: rgba(164, 14, 38, 0.1);
+}
+
+body.light .status-card-value.ram {
+    color: #8250df;
+}
+
+body.light .chart-container {
+    box-shadow: var(--shadow-sm);
+}
+
+body.light .chart-container:hover {
+    box-shadow: 0 2px 8px rgba(28, 33, 40, 0.08);
+}
+
+body.light .overlay {
+    background: rgba(28, 33, 40, 0.35);
+}
+
+body.light .toggle-row {
+    background: var(--bg-input);
+    border-color: var(--border);
+}
+
+body.light .storage-bar {
+    background: #eaeef2;
+    border-color: var(--border);
+}
+
+body.light .storage-fill.low {
+    background: linear-gradient(90deg, #2da44e, #3fb950);
+}
+
+body.light .storage-fill.medium {
+    background: linear-gradient(90deg, #4ac26b, #d4a72c);
+}
+
+body.light .storage-fill.high {
+    background: linear-gradient(90deg, #d4a72c, #cf222e);
+}
+
+body.light .storage-fill.critical {
+    background: linear-gradient(90deg, #cf222e, #a40e26);
+}
+
+body.light .settings-btn {
+    background: var(--bg-input);
+}
+
+body.light .settings-btn:hover {
+    background: var(--bg-card-hover);
 }
 
 * {
@@ -75,6 +154,19 @@ body {
     background: var(--border-hover);
 }
 
+/* Plotly hover spike: soft round caps; hide contrast halo (stroke-width = spikethickness + 2) */
+.js-plotly-plot .plotly g.hoverlayer line.spikeline {
+    shape-rendering: geometricPrecision;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.js-plotly-plot .plotly g.hoverlayer line.spikeline.crisp[stroke-width="2.5"],
+.js-plotly-plot .plotly g.hoverlayer line.spikeline.crisp[stroke-width="3"],
+.js-plotly-plot .plotly g.hoverlayer line.spikeline.crisp[stroke-width="3.5"] {
+    display: none !important;
+}
+
 /* ── Header ── */
 .header {
     display: flex;
@@ -91,7 +183,7 @@ body {
     gap: 4px;
     background: transparent;
     color: var(--text-secondary);
-    border: 1px solid var(--border);
+    border: none;
     border-radius: var(--radius-sm);
     cursor: pointer;
     font-size: 11px;
@@ -99,12 +191,12 @@ body {
     padding: 4px 10px;
     transition: var(--transition);
     white-space: nowrap;
+    flex: 1;
 }
 
 .settings-btn:hover {
     color: var(--text-primary);
     background: var(--bg-card-hover);
-    border-color: var(--border-hover);
 }
 
 .settings-btn svg {
@@ -113,31 +205,7 @@ body {
     flex-shrink: 0;
 }
 
-/* ── Status Cards ── */
-.status-row {
-    display: flex;
-    gap: 6px;
-    padding: 0 10px 8px;
-    flex-shrink: 0;
-}
-
-.status-card {
-    flex: 1;
-    min-width: 0;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 6px 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    transition: var(--transition);
-}
-
-.status-card:hover {
-    border-color: var(--border-hover);
-}
-
+/* ── Stat text (used inside chart headers) ── */
 .status-card-label {
     font-size: 9px;
     font-weight: 600;
@@ -162,9 +230,15 @@ body {
 .status-card-value.gpu { color: var(--warning); }
 .status-card-value.temp { color: var(--danger); }
 
+.status-card-value.vram-metric {
+    color: var(--success);
+    font-size: 12px;
+    letter-spacing: -0.03em;
+}
+
 .status-card-sub {
     font-size: 9px;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -181,33 +255,95 @@ body {
     gap: 6px;
 }
 
+.charts-scroll.charts-auto {
+    padding: 0 2px 2px;
+    gap: 2px;
+}
+
+.charts-scroll.charts-auto .chart-container {
+    flex: 1;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+}
+
+.charts-scroll.charts-auto .chart-head-stats {
+    padding-bottom: 2px;
+    gap: 4px;
+}
+
+.charts-scroll.charts-auto .status-card-label {
+    font-size: 8px;
+}
+
+.charts-scroll.charts-auto .status-card-value {
+    font-size: 13px;
+}
+
+.charts-scroll.charts-auto .status-card-value.vram-metric {
+    font-size: 10px;
+}
+
+.charts-scroll.charts-auto .status-card-sub {
+    font-size: 8px;
+}
+
+.charts-scroll.charts-auto .chart-stat-device {
+    font-size: 8px;
+    margin-bottom: 2px;
+}
+
 .chart-container {
     width: 100%;
     background: var(--bg-card);
     border-radius: var(--radius-md);
-    border: 1px solid var(--border);
     padding: 6px;
     transition: var(--transition);
     position: relative;
     overflow: hidden;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .chart-container:hover {
-    border-color: var(--border-hover);
+    background: var(--bg-card-hover);
 }
 
-.chart-title {
-    font-size: 10px;
+.chart-head-stats {
+    display: flex;
+    gap: 8px;
+    padding: 0 2px 6px;
+    flex-shrink: 0;
+}
+
+.chart-stat-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.chart-individual-head {
+    flex-shrink: 0;
+    padding: 0 2px 6px;
+}
+
+.chart-stat-device {
+    font-size: 9px;
     font-weight: 600;
     color: var(--text-secondary);
-    text-align: center;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--border);
     margin-bottom: 4px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.chart-plot-wrap {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    width: 100%;
 }
 
 /* ── Overlay ── */
@@ -274,7 +410,7 @@ body {
 
 .popup-close:hover {
     color: var(--danger);
-    background: rgba(248, 81, 73, 0.1);
+    background: var(--danger-bg-soft);
 }
 
 .popup-body {
@@ -416,6 +552,13 @@ body {
 }
 
 /* ── Storage Section ── */
+.storage-empty-hint {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 8px;
+    font-size: 11px;
+}
+
 .storage-section {
     margin-bottom: 12px;
 }
@@ -500,16 +643,12 @@ body {
 
 /* ── Responsive - Very narrow sidebar (< 250px) ── */
 @media screen and (max-width: 250px) {
-    .status-row {
+    .chart-head-stats {
         flex-direction: column;
-        gap: 4px;
+        gap: 6px;
     }
 
-    .status-card {
-        padding: 4px 6px;
-    }
-
-    .status-card-value {
+    .chart-head-stats .status-card-value {
         font-size: 13px;
     }
 

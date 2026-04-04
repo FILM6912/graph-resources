@@ -15,9 +15,7 @@ export const StorageBar = ({ drives }: StorageBarProps) => {
   if (drives.length === 0) {
     return (
       <div className="storage-section">
-        <div style={{ textAlign: 'center', color: '#484f58', padding: '8px', fontSize: '11px' }}>
-          No drives detected
-        </div>
+        <div className="storage-empty-hint">No drives detected</div>
       </div>
     );
   }
