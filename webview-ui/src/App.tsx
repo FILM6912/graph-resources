@@ -13,7 +13,9 @@ export default function App() {
   const { settings, updateSettings } = useSettings();
 
   useEffect(() => {
-    document.body.classList.toggle('light', settings.theme === 'light');
+    const light = settings.theme === 'light';
+    document.documentElement.classList.toggle('light', light);
+    document.body.classList.toggle('light', light);
   }, [settings.theme]);
 
   const [systemData, setSystemData] = useState<SystemData>({

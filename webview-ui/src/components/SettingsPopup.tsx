@@ -29,6 +29,7 @@ export const SettingsPopup = ({
         </div>
 
         <div className="popup-body">
+          <div className="popup-body-scroll">
           <div className="popup-section">
             <div className="popup-section-title">Storage</div>
             <StorageBar drives={drives} />
@@ -149,6 +150,7 @@ export const SettingsPopup = ({
                 <span className="number-unit">s</span>
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>
