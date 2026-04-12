@@ -29,6 +29,7 @@ export const SettingsPopup = ({
         </div>
 
         <div className="popup-body">
+          <div className="popup-body-scroll">
           <div className="popup-section">
             <div className="popup-section-title">Storage</div>
             <StorageBar drives={drives} />
@@ -89,6 +90,17 @@ export const SettingsPopup = ({
           <div className="popup-section">
             <div className="popup-section-title">Configuration</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div className="toggle-row">
+                <label>Light Theme</label>
+                <button
+                  type="button"
+                  className={`toggle-switch ${settings.theme === 'light' ? 'active' : ''}`}
+                  aria-pressed={settings.theme === 'light'}
+                  onClick={() => onUpdateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' })}
+                >
+                  <span className="toggle-slider" />
+                </button>
+              </div>
               <div className="number-row">
                 <label>GPU Count</label>
                 <input
@@ -100,30 +112,31 @@ export const SettingsPopup = ({
                   onChange={(e) => onUpdateSettings({ gpuNValue: parseInt(e.target.value) || 0 })}
                 />
               </div>
-              <div className="number-row">
-                <label>Chart Height</label>
-                <select
-                  className="number-input"
-                  value={settings.chartHeightMode}
-                  onChange={(e) => onUpdateSettings({ chartHeightMode: e.target.value as 'auto' | 'custom' })}
+              <div className="toggle-row">
+                <label>Auto Height</label>
+                <button
+                  type="button"
+                  className={`toggle-switch ${settings.chartHeightMode === 'auto' ? 'active' : ''}`}
+                  aria-pressed={settings.chartHeightMode === 'auto'}
+                  onClick={() => onUpdateSettings({ chartHeightMode: settings.chartHeightMode === 'auto' ? 'custom' : 'auto' })}
                 >
-                  <option value="auto">Auto</option>
-                  <option value="custom">Custom</option>
-                </select>
-                {settings.chartHeightMode === 'custom' && (
-                  <>
-                    <input
-                      className="number-input"
-                      type="number"
-                      min="1"
-                      max="1000"
-                      value={settings.chartHight}
-                      onChange={(e) => onUpdateSettings({ chartHight: parseInt(e.target.value) || 200 })}
-                    />
-                    <span className="number-unit">px</span>
-                  </>
-                )}
+                  <span className="toggle-slider" />
+                </button>
               </div>
+              {settings.chartHeightMode === 'custom' && (
+                <div className="number-row">
+                  <label>Chart Height</label>
+                  <input
+                    className="number-input"
+                    type="number"
+                    min="1"
+                    max="1000"
+                    value={settings.chartHight}
+                    onChange={(e) => onUpdateSettings({ chartHight: parseInt(e.target.value) || 200 })}
+                  />
+                  <span className="number-unit">px</span>
+                </div>
+              )}
               <div className="number-row">
                 <label>Time Range</label>
                 <input
@@ -137,6 +150,7 @@ export const SettingsPopup = ({
                 <span className="number-unit">s</span>
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>

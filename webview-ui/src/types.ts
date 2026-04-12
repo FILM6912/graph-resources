@@ -59,6 +59,7 @@ export interface Settings {
   time: number;
   chartHight: number;
   chartHeightMode: 'auto' | 'custom';
+  theme: 'dark' | 'light';
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -74,6 +75,7 @@ export const DEFAULT_SETTINGS: Settings = {
   time: 30,
   chartHight: 200,
   chartHeightMode: 'custom',
+  theme: 'dark',
 };
 
 export const SETTINGS_KEY = 'systemMonitorSettings';
