@@ -4,7 +4,7 @@
   "description": "Show resources usage graph in the activity bar",
   "version": "1.0.4",
   "license": "Apache-2.0",
-  "publisher": "nvidia-monitor",
+  "publisher": "FILM6912",
   "repository": {
     "type": "git",
     "url": "https://github.com/WATCHARAPHON6912/graph-resources"
