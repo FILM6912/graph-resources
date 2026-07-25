@@ -6,7 +6,7 @@ import { CpuRamChart } from './components/CpuRamChart';
 import { GpuTotalChart } from './components/GpuTotalChart';
 import { GpuIndividualChart } from './components/GpuIndividualChart';
 import { SettingsPopup } from './components/SettingsPopup';
-import { SystemData, ChartDataPoint, GpuTotalDataPoint, GpuIndividualDataPoint } from './types';
+import { SystemData, ChartDataPoint, GpuTotalDataPoint, GpuIndividualDataPoint, ChartHistory } from './types';
 
 export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -38,23 +38,25 @@ export default function App() {
   const cpuRamDataRef = useRef<ChartDataPoint[]>([]);
   const gpuTotalDataRef = useRef<GpuTotalDataPoint[]>([]);
   const gpuIndividualDataRef = useRef<Map<number, GpuIndividualDataPoint[]>>(new Map());
-  const timeCounterRef = useRef(0);
 
-  const handleData = useCallback((data: SystemData) => {
+  const handleData = useCallback((data: SystemData, history?: ChartHistory) => {
     setSystemData(data);
+
+    // ใช้ history ที่สะสมจาก extension (server-side) แทนการสะสมเอง
+    if (history) {
+      cpuRamDataRef.current = history.cpuRam;
+      gpuTotalDataRef.current = history.gpuTotal;
+      const gpuIndMap = new Map<number, GpuIndividualDataPoint[]>();
+      for (const key in history.gpuIndividual) {
+        gpuIndMap.set(Number(key), history.gpuIndividual[key]);
+      }
+      gpuIndividualDataRef.current = gpuIndMap;
+    }
 
     const cpu = parseFloat(data.cpu.cpuUsage) || 0;
     const ramTotal = parseFloat(data.cpu.memoryTotal) || 1;
     const ramUsed = parseFloat(data.cpu.memoryUsage) || 0;
     const ramPercent = (ramUsed / ramTotal) * 100;
-
-    const maxLen = settings.time;
-
-    timeCounterRef.current += 1;
-    const timeLabel = timeCounterRef.current;
-
-    const newCpuRamPoint: ChartDataPoint = { time: timeLabel, cpu, ram: ramPercent };
-    cpuRamDataRef.current = [...cpuRamDataRef.current, newCpuRamPoint].slice(-maxLen);
 
     let totalGpuUsage = 0;
     let totalVramUsed = 0;
@@ -81,45 +83,7 @@ export default function App() {
       vramUsed: totalVramUsed.toFixed(1),
       vramTotal: totalVramTotal.toFixed(0),
     });
-
-    const safeVramTotal = totalVramTotal > 0 ? totalVramTotal : 1;
-    const vramPercent = totalVramTotal > 0 ? (totalVramUsed / safeVramTotal) * 100 : 0;
-
-    const newGpuTotalPoint: GpuTotalDataPoint = {
-      time: timeLabel,
-      gpu: parseFloat(avgGpu.toFixed(2)),
-      vram: parseFloat(vramPercent.toFixed(2)),
-      avgTemp: parseFloat(avgTemp.toFixed(2)),
-    };
-    gpuTotalDataRef.current = [...gpuTotalDataRef.current, newGpuTotalPoint].slice(-maxLen);
-
-    for (let i = 0; i < data.gpu.length; i++) {
-      const gpu = data.gpu[i];
-      const gpuUsage = parseFloat(gpu.gpuUsage) || 0;
-      const memTotal = parseFloat(gpu.memoryTotal) || 1;
-      const memUsed = parseFloat(gpu.memoryUsage) || 0;
-      const vramPct = (memUsed / memTotal) * 100;
-      const temp = parseFloat(gpu.temperature) || 0;
-
-      const newPoint: GpuIndividualDataPoint = {
-        time: timeLabel,
-        gpuUsage,
-        vram: parseFloat(vramPct.toFixed(2)),
-        temp,
-      };
-
-      const existing = gpuIndividualDataRef.current.get(i) || [];
-      gpuIndividualDataRef.current.set(i, [...existing, newPoint].slice(-maxLen));
-    }
-
-    if (cpuRamDataRef.current.length > maxLen) {
-      cpuRamDataRef.current = cpuRamDataRef.current.slice(-maxLen);
-    }
-    if (gpuTotalDataRef.current.length > maxLen) {
-      gpuTotalDataRef.current = gpuTotalDataRef.current.slice(-maxLen);
-    }
-
-  }, [settings.time]);
+  }, []);
 
   useVSCodeApi(handleData);
 
@@ -139,6 +103,7 @@ export default function App() {
             ramPercent={lastValues.ram}
             ramUsed={lastValues.ramUsed}
             ramTotal={lastValues.ramTotal}
+            cpuTemp={systemData.cpu.temperature}
           />
         )}
 

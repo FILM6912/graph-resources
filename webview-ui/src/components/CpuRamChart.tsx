@@ -12,6 +12,7 @@ interface CpuRamChartProps {
   ramPercent: number;
   ramUsed: string;
   ramTotal: string;
+  cpuTemp?: string;
 }
 
 export const CpuRamChart = ({
@@ -22,6 +23,7 @@ export const CpuRamChart = ({
   ramPercent,
   ramUsed,
   ramTotal,
+  cpuTemp,
 }: CpuRamChartProps) => {
   const x = useMemo(() => data.map((_, i) => i), [data]);
   const cpuY = useMemo(() => data.map(d => d.cpu), [data]);
@@ -104,6 +106,9 @@ export const CpuRamChart = ({
           <span className="status-card-sub" title={cpuName}>
             {cpuName}
           </span>
+          {cpuTemp && parseFloat(cpuTemp) > 0 && (
+            <span className="status-card-temp">{cpuTemp}°C</span>
+          )}
         </div>
         <div className="chart-stat-col">
           <span className="status-card-label">RAM</span>

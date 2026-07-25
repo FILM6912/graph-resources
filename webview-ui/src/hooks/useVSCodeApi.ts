@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { VSCodeMessage, SystemData } from '../types';
+import { VSCodeMessage, SystemData, ChartHistory } from '../types';
 
 declare function acquireVsCodeApi(): {
   postMessage(message: unknown): void;
@@ -27,15 +27,15 @@ function getVSCodeApi(): VSCodeAPI | null {
 }
 
 export function useVSCodeApi(
-  onData: (data: SystemData) => void
+  onData: (data: SystemData, history?: ChartHistory) => void
 ): void {
   const handleData = useCallback(onData, [onData]);
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       const message = event.data as VSCodeMessage;
-      if (message.command === 'update') {
-        handleData(message.data);
+      if (message.command === 'update' || message.command === 'init') {
+        handleData(message.data, message.history);
       }
     }
 

@@ -319,6 +319,14 @@ html.light .popup {
     font-size: 8px;
 }
 
+.status-card-temp {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--danger);
+    font-family: var(--font-mono);
+    margin-top: 1px;
+}
+
 .charts-scroll.charts-auto .chart-stat-device {
     font-size: 8px;
     margin-bottom: 2px;

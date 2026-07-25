@@ -80,8 +80,15 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export const SETTINGS_KEY = 'systemMonitorSettings';
 
+export interface ChartHistory {
+  cpuRam: ChartDataPoint[];
+  gpuTotal: GpuTotalDataPoint[];
+  gpuIndividual: Record<number, GpuIndividualDataPoint[]>;
+}
+
 export interface VSCodeMessage {
   command: string;
   data: SystemData;
+  history?: ChartHistory;
 }
 
